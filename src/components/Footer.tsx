@@ -6,8 +6,8 @@ const Footer = () => {
         <div className="grid md:grid-cols-2 gap-8 items-center">
           {/* Left - Logo and Copyright */}
           <div className="space-y-4">
-            <div className="text-2xl font-bold">Badge Inserts</div>
-            <div className="text-white/60">© 2025 Badge Inserts</div>
+            <div className="text-2xl font-bold">BadgeSheet</div>
+            <div className="text-white/60">© 2025 BadgeSheet</div>
           </div>
 
           {/* Right - Links */}
