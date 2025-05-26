@@ -1,5 +1,5 @@
-
 import { Button } from "@/components/ui/button";
+import AuthDialog from "./AuthDialog";
 
 const Navigation = () => {
   return (
@@ -16,10 +16,19 @@ const Navigation = () => {
             <span className="text-xl font-bold text-textDark">BadgeSheet</span>
           </div>
 
-          {/* Right - CTA Button */}
-          <Button className="bg-primary hover:bg-primary/90 text-white">
-            Get Started
-          </Button>
+          {/* Right - Auth Buttons */}
+          <div className="flex items-center space-x-4">
+            <AuthDialog mode="login">
+              <Button variant="ghost" className="text-textDark hover:text-primary">
+                Login
+              </Button>
+            </AuthDialog>
+            <AuthDialog mode="signup">
+              <Button className="bg-primary hover:bg-primary/90 text-white">
+                Sign Up
+              </Button>
+            </AuthDialog>
+          </div>
         </div>
       </div>
     </nav>
