@@ -17,15 +17,9 @@ const GenerateBadges = () => {
     try {
       console.log('Sending request to generate PDF:', { names, templateId });
       
-      // Log the Supabase client configuration
-      console.log('Supabase URL:', supabase.supabaseUrl);
-      console.log('Supabase Key:', supabase.supabaseKey ? 'Present' : 'Missing');
-      
       const { data, error } = await supabase.functions.invoke("generate-pdf", {
         body: { names, templateId },
       });
-
-      console.log('Raw response:', { data, error });
 
       if (error) {
         console.error('Supabase function error:', error);
@@ -33,21 +27,21 @@ const GenerateBadges = () => {
       }
 
       if (!data) {
-        console.error('No data received from function');
         throw new Error('No data received from the function');
       }
 
-      console.log('Data type:', typeof data);
-      console.log('Data instanceof ArrayBuffer:', data instanceof ArrayBuffer);
-      console.log('Data instanceof Uint8Array:', data instanceof Uint8Array);
-
+      // Convert the response to a Uint8Array
       let pdfBytes;
-      if (data instanceof ArrayBuffer) {
+      if (typeof data === 'string') {
+        // If we received a string, convert it to a Uint8Array
+        const encoder = new TextEncoder();
+        pdfBytes = encoder.encode(data);
+      } else if (data instanceof ArrayBuffer) {
         pdfBytes = new Uint8Array(data);
       } else if (data instanceof Uint8Array) {
         pdfBytes = data;
       } else {
-        console.error('Unexpected data type:', data);
+        console.error('Unexpected data type:', typeof data);
         throw new Error('Unexpected response format from server');
       }
 

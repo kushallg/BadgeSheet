@@ -76,13 +76,8 @@ serve(async (req) => {
     const pdfBytes = await pdf.save()
     console.log('PDF generated successfully, size:', pdfBytes.length);
     
-    // Convert to ArrayBuffer for proper binary transfer
-    const arrayBuffer = pdfBytes.buffer.slice(
-      pdfBytes.byteOffset,
-      pdfBytes.byteOffset + pdfBytes.byteLength
-    );
-    
-    return new Response(arrayBuffer, {
+    // Return the PDF bytes directly
+    return new Response(pdfBytes, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename=Badges.pdf',
