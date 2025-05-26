@@ -17,9 +17,15 @@ const GenerateBadges = () => {
     try {
       console.log('Sending request to generate PDF:', { names, templateId });
       
+      // Log the Supabase client configuration
+      console.log('Supabase URL:', supabase.supabaseUrl);
+      console.log('Supabase Key:', supabase.supabaseKey ? 'Present' : 'Missing');
+      
       const { data, error } = await supabase.functions.invoke("generate-pdf", {
         body: { names, templateId },
       });
+
+      console.log('Raw response:', { data, error });
 
       if (error) {
         console.error('Supabase function error:', error);
@@ -27,14 +33,30 @@ const GenerateBadges = () => {
       }
 
       if (!data) {
+        console.error('No data received from function');
         throw new Error('No data received from the function');
       }
 
-      // Convert the response to a Uint8Array
-      const pdfBytes = new Uint8Array(data as ArrayBuffer);
+      console.log('Data type:', typeof data);
+      console.log('Data instanceof ArrayBuffer:', data instanceof ArrayBuffer);
+      console.log('Data instanceof Uint8Array:', data instanceof Uint8Array);
+
+      let pdfBytes;
+      if (data instanceof ArrayBuffer) {
+        pdfBytes = new Uint8Array(data);
+      } else if (data instanceof Uint8Array) {
+        pdfBytes = data;
+      } else {
+        console.error('Unexpected data type:', data);
+        throw new Error('Unexpected response format from server');
+      }
+
+      console.log('PDF bytes length:', pdfBytes.length);
       
       // Create blob from the PDF bytes
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      console.log('Blob created:', blob.size, 'bytes');
+      
       const url = URL.createObjectURL(blob);
       
       // Create and trigger download
@@ -52,6 +74,11 @@ const GenerateBadges = () => {
       });
     } catch (error: any) {
       console.error('Error generating PDF:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
       toast({
         title: "Error",
         description: error.message || "Failed to generate PDF. Please try again.",

@@ -9,6 +9,17 @@ serve(async (req) => {
   try {
     console.log('Received request:', req.method, req.url);
     
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        }
+      });
+    }
+    
     const { names, templateId } = await req.json()
     console.log('Request body:', { names, templateId });
     
@@ -65,7 +76,13 @@ serve(async (req) => {
     const pdfBytes = await pdf.save()
     console.log('PDF generated successfully, size:', pdfBytes.length);
     
-    return new Response(pdfBytes, {
+    // Convert to ArrayBuffer for proper binary transfer
+    const arrayBuffer = pdfBytes.buffer.slice(
+      pdfBytes.byteOffset,
+      pdfBytes.byteOffset + pdfBytes.byteLength
+    );
+    
+    return new Response(arrayBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename=Badges.pdf',
