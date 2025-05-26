@@ -16,100 +16,68 @@ serve(async (req) => {
   }
 
   try {
-    // parse and validate
-    const { names, templateId } = await req.json();
+    // Parse names array
+    const { names } = await req.json();
     if (!Array.isArray(names) || names.length === 0) {
       throw new Error("Names array is required and must not be empty");
     }
-    if (typeof templateId !== "string" || !templateId) {
-      throw new Error("Template ID is required");
-    }
 
-    // create PDF and embed font
+    // Create PDF
     const pdf = await PDFDocument.create();
     const page = pdf.addPage([595, 842]); // A4
     const font = await pdf.embedFont(StandardFonts.HelveticaBold);
     const fontSize = 20;
 
-    // grid layout
-    const cols = 2;
-    const rows = 3;
+    // Grid: 3 columns × 2 rows (horizontal flow)
+    const cols = 3;
+    const rows = 2;
     const badgeW = 595 / cols;
     const badgeH = (842 - 40) / rows;
     const margin = 20;
+    const fillColor = rgb(241 / 255, 80 / 255, 37 / 255);  // #F15025
+    const textColor = rgb(25 / 255, 25 / 255, 25 / 255);   // #191919
 
-    // color schemes
-    const COLORS: Record<
-      string,
-      { fill: [number, number, number]; border: [number, number, number]; text: [number, number, number] }
-    > = {
-      classic: {
-        fill: [1, 1, 1],
-        border: [25 / 255, 25 / 255, 25 / 255],
-        text: [25 / 255, 25 / 255, 25 / 255],
-      },
-      primary: {
-        fill: [241 / 255, 80 / 255, 37 / 255],
-        border: [25 / 255, 25 / 255, 25 / 255],
-        text: [1, 1, 1],
-      },
-      subtle: {
-        fill: [230 / 255, 232 / 255, 230 / 255],
-        border: [206 / 255, 208 / 255, 206 / 255],
-        text: [25 / 255, 25 / 255, 25 / 255],
-      },
-      outline: {
-        fill: [1, 1, 1],
-        border: [241 / 255, 80 / 255, 37 / 255],
-        text: [241 / 255, 80 / 255, 37 / 255],
-      },
-    };
-
-    // draw each badge
+    // Draw each badge
     names.forEach((name: string, i: number) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols) % rows;
-      const x = col * badgeW + margin / 2;
-      const y = 842 - margin - (row + 1) * badgeH;
+      const pageIndex = Math.floor(i / (cols * rows));
+      if (pageIndex >= pdf.getPageCount()) {
+        pdf.addPage([595, 842]);
+      }
+      const p = pdf.getPage(pageIndex);
 
-      // select style
-      const style = COLORS[templateId] ?? COLORS.classic;
+      const idx = i % (cols * rows);
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
 
-      // background fill
-      page.drawRectangle({
+      // Position from top-left
+      const x = margin / 2 + col * badgeW;
+      const y = 842 - margin - badgeH - row * badgeH;
+
+      // Orange fill
+      p.drawRectangle({
         x,
         y,
         width: badgeW - margin,
         height: badgeH - margin,
-        color: rgb(...style.fill),
+        color: fillColor,
       });
 
-      // border
-      page.drawRectangle({
-        x,
-        y,
-        width: badgeW - margin,
-        height: badgeH - margin,
-        borderColor: rgb(...style.border),
-        borderWidth: 1,
-      });
-
-      // centered text
+      // Centered black text
       const textWidth = font.widthOfTextAtSize(name, fontSize);
-      page.drawText(name, {
+      p.drawText(name, {
         x: x + (badgeW - margin - textWidth) / 2,
-        y: y + (badgeH / 2) - fontSize / 2,
+        y: y + (badgeH - margin) / 2 - fontSize / 2,
         size: fontSize,
         font,
-        color: rgb(...style.text),
+        color: textColor,
       });
     });
 
-    // serialize & encode
+    // Serialize & encode
     const pdfBytes = await pdf.save();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(pdfBytes)));
 
-    // respond
+    // JSON response
     return new Response(JSON.stringify({ pdf: base64 }), {
       status: 200,
       headers: {
@@ -119,15 +87,14 @@ serve(async (req) => {
         "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
       },
     });
-  } catch (error: any) {
-    console.error("Error in generate-pdf:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+
+  } catch (err: any) {
+    console.error("Error in generate-pdf:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
       status: 400,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
       },
     });
   }
