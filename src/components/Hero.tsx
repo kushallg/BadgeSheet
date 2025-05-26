@@ -1,5 +1,5 @@
-
 import { Upload } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
@@ -16,10 +16,12 @@ const Hero = () => {
                 Upload names, pick a template, cut along the dotted lines. No adhesives needed.
               </p>
             </div>
-            <button className="bg-primary text-white py-3 px-6 rounded-lg shadow-lg hover:bg-primary/90 transition-colors duration-200 font-semibold inline-flex items-center gap-2">
-              <Upload size={20} />
-              Generate Badges Now
-            </button>
+            <Link to="/generate">
+              <button className="bg-primary text-white py-3 px-6 rounded-lg shadow-lg hover:bg-primary/90 transition-colors duration-200 font-semibold inline-flex items-center gap-2">
+                <Upload size={20} />
+                Generate Badges Now
+              </button>
+            </Link>
           </div>
 
           {/* Right Mockup */}
