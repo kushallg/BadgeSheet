@@ -1,9 +1,9 @@
-import { serve } from 'https://deno.land/x/sift@0.5.0/mod.ts'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import {
   PDFDocument,
   StandardFonts,
   rgb,
-} from 'https://esm.sh/pdf-lib@1.17.1'
+} from "https://esm.sh/pdf-lib@1.17.1"
 
 serve(async (req) => {
   try {
