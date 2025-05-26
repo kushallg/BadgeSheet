@@ -1,101 +1,96 @@
-// supabase/functions/generate-pdf/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
-
-serve(async (req) => {
-  // CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      },
-    });
-  }
-
+serve(async (req)=>{
   try {
-    // Parse names array
-    const { names } = await req.json();
-    if (!Array.isArray(names) || names.length === 0) {
-      throw new Error("Names array is required and must not be empty");
+    console.log('Received request:', req.method, req.url);
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+        }
+      });
     }
-
-    // Create PDF
+    const { names, templateId } = await req.json();
+    console.log('Request body:', {
+      names,
+      templateId
+    });
+    if (!Array.isArray(names) || names.length === 0) {
+      throw new Error('Names array is required and must not be empty');
+    }
+    if (!templateId) {
+      throw new Error('Template ID is required');
+    }
+    // Create a new PDF document
     const pdf = await PDFDocument.create();
-    const page = pdf.addPage([595, 842]); // A4
+    const page = pdf.addPage([
+      595,
+      842
+    ]) // A4 in points
+    ;
     const font = await pdf.embedFont(StandardFonts.HelveticaBold);
-    const fontSize = 20;
-
-    // Grid: 3 columns × 2 rows (horizontal flow)
-    const cols = 3;
-    const rows = 2;
+    const fontSize = 24;
+    // Layout configuration
+    const cols = 2;
+    const rows = 3;
     const badgeW = 595 / cols;
     const badgeH = (842 - 40) / rows;
     const margin = 20;
-    const fillColor = rgb(241 / 255, 80 / 255, 37 / 255);  // #F15025
-    const textColor = rgb(25 / 255, 25 / 255, 25 / 255);   // #191919
-
-    // Draw each badge
-    names.forEach((name: string, i: number) => {
-      const pageIndex = Math.floor(i / (cols * rows));
-      if (pageIndex >= pdf.getPageCount()) {
-        pdf.addPage([595, 842]);
-      }
-      const p = pdf.getPage(pageIndex);
-
-      const idx = i % (cols * rows);
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-
-      // Position from top-left
-      const x = margin / 2 + col * badgeW;
-      const y = 842 - margin - badgeH - row * badgeH;
-
-      // Orange fill
-      p.drawRectangle({
+    // Draw badges
+    names.forEach((name, i)=>{
+      const col = i % cols;
+      const row = Math.floor(i / cols) % rows;
+      const x = col * badgeW + margin / 2;
+      const y = 842 - margin - (row + 1) * badgeH;
+      // Draw badge border
+      page.drawRectangle({
         x,
         y,
         width: badgeW - margin,
         height: badgeH - margin,
-        color: fillColor,
+        borderColor: rgb(0.6, 0.6, 0.6),
+        borderWidth: 1
       });
-
-      // Centered black text
+      // Draw name
       const textWidth = font.widthOfTextAtSize(name, fontSize);
-      p.drawText(name, {
+      page.drawText(name, {
         x: x + (badgeW - margin - textWidth) / 2,
-        y: y + (badgeH - margin) / 2 - fontSize / 2,
+        y: y + badgeH / 2.5,
         size: fontSize,
         font,
-        color: textColor,
+        color: rgb(0.1, 0.1, 0.1)
       });
     });
-
-    // Serialize & encode
+    // Save the PDF
     const pdfBytes = await pdf.save();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(pdfBytes)));
-
-    // JSON response
-    return new Response(JSON.stringify({ pdf: base64 }), {
-      status: 200,
+    console.log('PDF generated successfully, size:', pdfBytes.length);
+    // Convert to base64 for safe transmission
+    const base64 = btoa(String.fromCharCode.apply(null, pdfBytes));
+    return new Response(JSON.stringify({
+      pdf: base64
+    }), {
       headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      },
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+      }
     });
-
-  } catch (err: any) {
-    console.error("Error in generate-pdf:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (error) {
+    console.error('Error in generate-pdf function:', error);
+    return new Response(JSON.stringify({
+      error: error.message
+    }), {
       status: 400,
       headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+      }
     });
   }
 });
