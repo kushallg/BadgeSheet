@@ -1,2 +1,3 @@
 [functions.generate-pdf]
-verify_jwt = false 
+  runtime    = "edge"
+  entrypoint = "index.ts"
