@@ -7,7 +7,10 @@ import {
 
 serve(async (req) => {
   try {
+    console.log('Received request:', req.method, req.url);
+    
     const { names, templateId } = await req.json()
+    console.log('Request body:', { names, templateId });
     
     if (!Array.isArray(names) || names.length === 0) {
       throw new Error('Names array is required and must not be empty')
@@ -60,17 +63,27 @@ serve(async (req) => {
 
     // Save the PDF
     const pdfBytes = await pdf.save()
+    console.log('PDF generated successfully, size:', pdfBytes.length);
     
     return new Response(pdfBytes, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename=Badges.pdf',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       }
     })
   } catch (error) {
+    console.error('Error in generate-pdf function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      }
     })
   }
 })

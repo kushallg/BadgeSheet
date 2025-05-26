@@ -15,18 +15,35 @@ const GenerateBadges = () => {
   const handleGenerate = async () => {
     setLoading(true);
     try {
+      console.log('Sending request to generate PDF:', { names, templateId });
+      
       const { data, error } = await supabase.functions.invoke("generate-pdf", {
-        body: JSON.stringify({ names, templateId }),
+        body: { names, templateId },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
-      const blob = new Blob([data as ArrayBuffer], { type: "application/pdf" });
+      if (!data) {
+        throw new Error('No data received from the function');
+      }
+
+      // Convert the response to a Uint8Array
+      const pdfBytes = new Uint8Array(data as ArrayBuffer);
+      
+      // Create blob from the PDF bytes
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
+      
+      // Create and trigger download
       const a = document.createElement("a");
       a.href = url;
       a.download = "Badges.pdf";
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
       toast({
@@ -34,9 +51,10 @@ const GenerateBadges = () => {
         description: "Your badges have been generated successfully.",
       });
     } catch (error: any) {
+      console.error('Error generating PDF:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to generate PDF. Please try again.",
         variant: "destructive",
       });
     } finally {
