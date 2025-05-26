@@ -26,29 +26,21 @@ const GenerateBadges = () => {
         throw error;
       }
 
-      if (!data) {
-        throw new Error('No data received from the function');
+      if (!data || !data.pdf) {
+        throw new Error('No PDF data received from the function');
       }
 
-      // Convert the response to a Uint8Array
-      let pdfBytes;
-      if (typeof data === 'string') {
-        // If we received a string, convert it to a Uint8Array
-        const encoder = new TextEncoder();
-        pdfBytes = encoder.encode(data);
-      } else if (data instanceof ArrayBuffer) {
-        pdfBytes = new Uint8Array(data);
-      } else if (data instanceof Uint8Array) {
-        pdfBytes = data;
-      } else {
-        console.error('Unexpected data type:', typeof data);
-        throw new Error('Unexpected response format from server');
+      // Convert base64 to binary
+      const binaryString = atob(data.pdf);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
 
-      console.log('PDF bytes length:', pdfBytes.length);
+      console.log('PDF bytes length:', bytes.length);
       
       // Create blob from the PDF bytes
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blob = new Blob([bytes], { type: "application/pdf" });
       console.log('Blob created:', blob.size, 'bytes');
       
       const url = URL.createObjectURL(blob);

@@ -76,11 +76,12 @@ serve(async (req) => {
     const pdfBytes = await pdf.save()
     console.log('PDF generated successfully, size:', pdfBytes.length);
     
-    // Return the PDF bytes directly
-    return new Response(pdfBytes, {
+    // Convert to base64 for safe transmission
+    const base64 = btoa(String.fromCharCode.apply(null, pdfBytes));
+    
+    return new Response(JSON.stringify({ pdf: base64 }), {
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename=Badges.pdf',
+        'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
