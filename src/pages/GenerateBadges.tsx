@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import NameUploader from "@/components/NameUploader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import Navigation from "@/components/Navigation";
 import { Palette } from "lucide-react";
-import { generateStyledPDF } from "@/utils/htmlToPdfGenerator";
 
 const colorOptions = [
   { name: 'Orange', value: '#F15025' },
@@ -35,8 +35,32 @@ const GenerateBadges = () => {
 
     setLoading(true);
     try {
-      console.log("Generating PDF...");
-      await generateStyledPDF(names, selectedColor);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          names: names,
+          color: selectedColor
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Download the PDF
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `name-badges-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
       
       toast({
         title: "Success!",
