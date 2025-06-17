@@ -33,10 +33,12 @@ serve(async (req) => {
     const badgeHeight = 2.5 * 72 // 180 points
     
     // Page layout
-    const marginX = 0.75 * 72
+    
+
     const marginY = 0.5 * 72
     const spacingX = 0.25 * 72
     const spacingY = 0.25 * 72
+    const marginX = ((8.5 * 72) - (2 * badgeWidth + spacingX)) / 2; // This centers the content
     
     const badgesPerRow = 2
     const badgesPerCol = 3
