@@ -25,8 +25,8 @@ serve(async (req) => {
   }
 
   const session = await stripe.checkout.sessions.retrieve(session_id);
-
-  return new Response(JSON.stringify({ paid: session.payment_status === "paid" }), {
+  const plan = session.metadata?.plan || null;
+  return new Response(JSON.stringify({ paid: session.payment_status === "paid", plan }), {
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 }); 

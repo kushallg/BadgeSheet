@@ -36,6 +36,7 @@ const GenerateBadges = () => {
   const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription'>('one_time');
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [plan, setPlan] = useState<'one_time' | 'subscription' | null>(null);
 
   // Auth check on mount
   useEffect(() => {
@@ -71,8 +72,14 @@ const GenerateBadges = () => {
         body: JSON.stringify({ session_id }),
       })
         .then((res) => res.json())
-        .then((data) => setHasPaid(data.paid))
-        .catch(() => setHasPaid(false))
+        .then((data) => {
+          setHasPaid(data.paid);
+          setPlan(data.plan || null);
+        })
+        .catch(() => {
+          setHasPaid(false);
+          setPlan(null);
+        })
         .finally(() => setVerifying(false));
     }
   }, []);
@@ -181,7 +188,7 @@ const GenerateBadges = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navigation />
+      <Navigation plan={plan} />
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="text-center space-y-4">

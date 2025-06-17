@@ -38,6 +38,7 @@ serve(async (req) => {
     success_url: `${Deno.env.get("SITE_URL")}/generate?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${Deno.env.get("SITE_URL")}/generate?canceled=true`,
     customer_email: email,
+    metadata: { plan },
   });
 
   return new Response(JSON.stringify({ url: session.url }), {
