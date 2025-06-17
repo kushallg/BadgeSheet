@@ -1,7 +1,35 @@
 import { Upload } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import AuthDialog from "@/components/AuthDialog";
 
 const Hero = () => {
+  const [user, setUser] = useState<any>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data?.user || null);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      if (session?.user) setLoginOpen(false);
+    });
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleGenerateClick = () => {
+    if (user) {
+      navigate("/generate");
+    } else {
+      setLoginOpen(true);
+    }
+  };
+
   return (
     <section className="bg-white py-16 md:py-24">
       <div className="container mx-auto px-4">
@@ -16,12 +44,17 @@ const Hero = () => {
                 Upload names, pick a template, cut along the dotted lines. No adhesives needed.
               </p>
             </div>
-            <Link to="/generate">
-              <button className="bg-primary text-white py-3 px-6 rounded-lg shadow-lg hover:bg-primary/90 transition-colors duration-200 font-semibold inline-flex items-center gap-2">
-                <Upload size={20} />
-                Generate Badges Now
-              </button>
-            </Link>
+            <button
+              className="bg-primary text-white py-3 px-6 rounded-lg shadow-lg hover:bg-primary/90 transition-colors duration-200 font-semibold inline-flex items-center gap-2"
+              onClick={handleGenerateClick}
+            >
+              <Upload size={20} />
+              Generate Badges Now
+            </button>
+            <AuthDialog mode="login" open={loginOpen} onOpenChange={setLoginOpen}>
+              {/* Hidden trigger, modal is controlled by state */}
+              <span />
+            </AuthDialog>
           </div>
 
           {/* Right Mockup */}

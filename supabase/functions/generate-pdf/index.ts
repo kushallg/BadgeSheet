@@ -13,7 +13,37 @@ serve(async (req) => {
   }
 
   try {
-    const { names, color = '#F15025' } = await req.json()
+    const { names, color = '#F15025', session_id } = await req.json()
+
+    // Stripe payment check
+    if (!session_id) {
+      return new Response(
+        JSON.stringify({ error: 'Payment required: session_id missing' }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+    // Call verify-payment function
+    const verifyRes = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/functions/v1/verify-payment`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id }),
+      }
+    )
+    const verifyData = await verifyRes.json()
+    if (!verifyData.paid) {
+      return new Response(
+        JSON.stringify({ error: 'Payment required: not paid' }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
 
     if (!names || !Array.isArray(names) || names.length === 0) {
       return new Response(
