@@ -1,4 +1,3 @@
-
 const Pricing = () => {
   return (
     <section className="bg-bgMedium py-16">
@@ -15,7 +14,7 @@ const Pricing = () => {
               <div className="text-center space-y-4">
                 <h3 className="text-2xl font-bold text-textDark">Pay-Per-Event</h3>
                 <div className="space-y-2">
-                  <div className="text-4xl font-bold text-primary">$3</div>
+                  <div className="text-4xl font-bold text-primary">$1</div>
                   <div className="text-textDark/60">per PDF</div>
                 </div>
                 <div className="text-textDark/75">One-time fee</div>
@@ -47,7 +46,7 @@ const Pricing = () => {
                 </div>
                 <h3 className="text-2xl font-bold text-textDark">Unlimited</h3>
                 <div className="space-y-2">
-                  <div className="text-4xl font-bold text-primary">$5</div>
+                  <div className="text-4xl font-bold text-primary">$4</div>
                   <div className="text-textDark/60">/month</div>
                 </div>
                 <div className="text-textDark/75">Unlimited events</div>
