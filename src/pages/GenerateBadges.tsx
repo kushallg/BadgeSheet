@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import Navigation from "@/components/Navigation";
 import { Palette } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
+import { getPaymentStatus } from "@/utils/getPaymentStatus";
 
 const colorOptions = [
   { name: 'Orange', value: '#F15025' },
@@ -37,6 +38,7 @@ const GenerateBadges = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [plan, setPlan] = useState<'one_time' | 'subscription' | null>(null);
+  const [planStatus, setPlanStatus] = useState<{ hasActiveSubscription: boolean, hasValidOneTime: boolean }>({ hasActiveSubscription: false, hasValidOneTime: false });
 
   // Auth check on mount
   useEffect(() => {
@@ -84,7 +86,19 @@ const GenerateBadges = () => {
     }
   }, []);
 
+  useEffect(() => {
+    getPaymentStatus().then(setPlanStatus);
+  }, []);
+
   const handlePay = async () => {
+    if (planStatus.hasActiveSubscription || planStatus.hasValidOneTime) {
+      toast({
+        title: "Already Paid",
+        description: "You already have access. No need to pay again.",
+        variant: "default",
+      });
+      return;
+    }
     const email = user?.email;
     if (!email) {
       toast({
@@ -124,7 +138,7 @@ const GenerateBadges = () => {
   };
 
   const handleGenerate = async () => {
-    if (!hasPaid) {
+    if (!(planStatus.hasActiveSubscription || planStatus.hasValidOneTime)) {
       toast({
         title: "Payment Required",
         description: "Please pay to download the PDF.",
@@ -142,11 +156,22 @@ const GenerateBadges = () => {
     }
     setLoading(true);
     try {
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      if (!accessToken) {
+        toast({
+          title: "Error",
+          description: "User session expired. Please log in again.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-pdf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           names: names,
@@ -202,28 +227,30 @@ const GenerateBadges = () => {
 
           <NameUploader onNamesChange={setNames} />
 
-          {/* Plan Selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Choose Plan
-            </label>
-            <div className="flex gap-4 mb-4">
-              {planOptions.map((plan) => (
-                <button
-                  key={plan.value}
-                  type="button"
-                  className={`px-4 py-2 rounded border-2 transition-all ${
-                    selectedPlan === plan.value
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                  }`}
-                  onClick={() => setSelectedPlan(plan.value as 'one_time' | 'subscription')}
-                >
-                  {plan.label}
-                </button>
-              ))}
+          {/* Only show payment options if NOT on monthly plan or valid one-time payment */}
+          {!(planStatus.hasActiveSubscription || planStatus.hasValidOneTime) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Choose Plan
+              </label>
+              <div className="flex gap-4 mb-4">
+                {planOptions.map((plan) => (
+                  <button
+                    key={plan.value}
+                    type="button"
+                    className={`px-4 py-2 rounded border-2 transition-all ${
+                      selectedPlan === plan.value
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                    }`}
+                    onClick={() => setSelectedPlan(plan.value as 'one_time' | 'subscription')}
+                  >
+                    {plan.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Color Selector */}
           <div>
@@ -256,16 +283,7 @@ const GenerateBadges = () => {
           </div>
 
           <div className="flex justify-center">
-            {!hasPaid ? (
-              <Button
-                size="lg"
-                className="bg-primary hover:bg-primary/90 text-white"
-                disabled={loading || verifying}
-                onClick={handlePay}
-              >
-                {loading ? "Redirecting..." : "Pay to Download"}
-              </Button>
-            ) : (
+            {(planStatus.hasActiveSubscription || planStatus.hasValidOneTime) ? (
               <Button
                 size="lg"
                 className="bg-primary hover:bg-primary/90 text-white"
@@ -273,6 +291,15 @@ const GenerateBadges = () => {
                 onClick={handleGenerate}
               >
                 {loading ? "Generating..." : "Generate PDF"}
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-primary/90 text-white"
+                disabled={loading || verifying}
+                onClick={handlePay}
+              >
+                {loading ? "Redirecting..." : "Pay to Download"}
               </Button>
             )}
           </div>
