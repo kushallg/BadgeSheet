@@ -25,6 +25,7 @@ const Navigation = () => {
   const [loginOpen, setLoginOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
   const [plan, setPlan] = useState<'one_time' | 'subscription' | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
 
   useEffect(() => {
     // Get current user on mount
@@ -43,13 +44,16 @@ const Navigation = () => {
   useEffect(() => {
     // Fetch payment status on mount and when user changes
     if (user) {
+      setPlanLoading(true);
       getPaymentStatus().then((status) => {
         if (status.hasActiveSubscription) setPlan('subscription');
         else if (status.hasValidOneTime) setPlan('one_time');
         else setPlan(null);
+        setPlanLoading(false);
       });
     } else {
       setPlan(null);
+      setPlanLoading(false);
     }
   }, [user]);
 
@@ -83,16 +87,22 @@ const Navigation = () => {
               {user ? (
                 <>
                   <span className="text-sm text-gray-700">Signed in as <span className="font-semibold">{user.email}</span></span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="text-xs px-3 py-1 rounded-full bg-gray-100 border border-gray-300 cursor-pointer font-medium text-gray-700">
-                        {planInfo.label}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      {planInfo.tooltip}
-                    </TooltipContent>
-                  </Tooltip>
+                  {planLoading ? (
+                    <span className="text-xs px-3 py-1 rounded-full bg-gray-100 border border-gray-300 font-medium text-gray-700">
+                      Checking plan status...
+                    </span>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-xs px-3 py-1 rounded-full bg-gray-100 border border-gray-300 cursor-pointer font-medium text-gray-700">
+                          {planInfo.label}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {planInfo.tooltip}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   <Button variant="ghost" className="text-textDark hover:text-primary" onClick={handleSignOut}>
                     Sign Out
                   </Button>

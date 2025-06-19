@@ -39,6 +39,7 @@ const GenerateBadges = () => {
   const [user, setUser] = useState<any>(null);
   const [plan, setPlan] = useState<'one_time' | 'subscription' | null>(null);
   const [planStatus, setPlanStatus] = useState<{ hasActiveSubscription: boolean, hasValidOneTime: boolean }>({ hasActiveSubscription: false, hasValidOneTime: false });
+  const [planLoading, setPlanLoading] = useState(true);
 
   // Auth check on mount
   useEffect(() => {
@@ -87,7 +88,11 @@ const GenerateBadges = () => {
   }, []);
 
   useEffect(() => {
-    getPaymentStatus().then(setPlanStatus);
+    setPlanLoading(true);
+    getPaymentStatus().then((status) => {
+      setPlanStatus(status);
+      setPlanLoading(false);
+    });
   }, []);
 
   const handlePay = async () => {
@@ -227,82 +232,91 @@ const GenerateBadges = () => {
 
           <NameUploader onNamesChange={setNames} />
 
-          {/* Only show payment options if NOT on monthly plan or valid one-time payment */}
-          {!(planStatus.hasActiveSubscription || planStatus.hasValidOneTime) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Choose Plan
-              </label>
-              <div className="flex gap-4 mb-4">
-                {planOptions.map((plan) => (
-                  <button
-                    key={plan.value}
-                    type="button"
-                    className={`px-4 py-2 rounded border-2 transition-all ${
-                      selectedPlan === plan.value
-                        ? 'border-primary bg-primary text-white'
-                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                    }`}
-                    onClick={() => setSelectedPlan(plan.value as 'one_time' | 'subscription')}
-                  >
-                    {plan.label}
-                  </button>
-                ))}
+          {/* Show loading state while plan status is being fetched */}
+          {planLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <span className="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full border border-gray-200">Checking plan status...</span>
+            </div>
+          ) : (
+            <>
+              {/* Only show payment options if NOT on monthly plan or valid one-time payment */}
+              {!(planStatus.hasActiveSubscription || planStatus.hasValidOneTime) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Choose Plan
+                  </label>
+                  <div className="flex gap-4 mb-4">
+                    {planOptions.map((plan) => (
+                      <button
+                        key={plan.value}
+                        type="button"
+                        className={`px-4 py-2 rounded border-2 transition-all ${
+                          selectedPlan === plan.value
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                        }`}
+                        onClick={() => setSelectedPlan(plan.value as 'one_time' | 'subscription')}
+                      >
+                        {plan.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Color Selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Palette className="w-4 h-4 inline mr-1" />
+                  Badge Color
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color.value}
+                      onClick={() => setSelectedColor(color.value)}
+                      className={`w-full h-10 rounded-md border-2 transition-all ${
+                        selectedColor === color.value 
+                          ? 'border-gray-800 ring-2 ring-gray-300' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: color.value }}
+                      title={color.name}
+                    >
+                      {selectedColor === color.value && (
+                        <span className="text-white text-xs font-bold">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selected: {colorOptions.find(c => c.value === selectedColor)?.name}
+                </p>
               </div>
-            </div>
+
+              <div className="flex justify-center">
+                {(planStatus.hasActiveSubscription || planStatus.hasValidOneTime) ? (
+                  <Button
+                    size="lg"
+                    className="bg-primary hover:bg-primary/90 text-white"
+                    disabled={!names.length || loading}
+                    onClick={handleGenerate}
+                  >
+                    {loading ? "Generating..." : "Generate PDF"}
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="bg-primary hover:bg-primary/90 text-white"
+                    disabled={loading || verifying}
+                    onClick={handlePay}
+                  >
+                    {loading ? "Redirecting..." : "Pay to Download"}
+                  </Button>
+                )}
+              </div>
+            </>
           )}
-
-          {/* Color Selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Palette className="w-4 h-4 inline mr-1" />
-              Badge Color
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {colorOptions.map((color) => (
-                <button
-                  key={color.value}
-                  onClick={() => setSelectedColor(color.value)}
-                  className={`w-full h-10 rounded-md border-2 transition-all ${
-                    selectedColor === color.value 
-                      ? 'border-gray-800 ring-2 ring-gray-300' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  style={{ backgroundColor: color.value }}
-                  title={color.name}
-                >
-                  {selectedColor === color.value && (
-                    <span className="text-white text-xs font-bold">✓</span>
-                  )}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Selected: {colorOptions.find(c => c.value === selectedColor)?.name}
-            </p>
-          </div>
-
-          <div className="flex justify-center">
-            {(planStatus.hasActiveSubscription || planStatus.hasValidOneTime) ? (
-              <Button
-                size="lg"
-                className="bg-primary hover:bg-primary/90 text-white"
-                disabled={!names.length || loading}
-                onClick={handleGenerate}
-              >
-                {loading ? "Generating..." : "Generate PDF"}
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                className="bg-primary hover:bg-primary/90 text-white"
-                disabled={loading || verifying}
-                onClick={handlePay}
-              >
-                {loading ? "Redirecting..." : "Pay to Download"}
-              </Button>
-            )}
-          </div>
         </div>
       </main>
     </div>
