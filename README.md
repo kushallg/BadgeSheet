@@ -93,7 +93,7 @@ STRIPE_PRICE_ID_SUBSCRIPTION="YOUR_STRIPE_SUBSCRIPTION_PRICE_ID"
 
 # The URL of your deployed application
 # For local development, this is usually http://localhost:5173
-SITE_URL="http://localhost:5173"
+SITE_URL="https://badgesheet.vercel.app"
 ```
 
 ### 5. Deploy Supabase Functions

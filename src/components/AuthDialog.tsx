@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { getErrorMessage } from "@/utils/errorHandling";
 
 interface AuthDialogProps {
   mode: "login" | "signup";
@@ -71,7 +72,7 @@ const AuthDialog = ({ mode, children, open, onOpenChange }: AuthDialogProps) => 
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -93,7 +94,7 @@ const AuthDialog = ({ mode, children, open, onOpenChange }: AuthDialogProps) => 
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {

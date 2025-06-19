@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@12.0.0?target=deno";
 
-const SITE_URL = Deno.env.get("SITE_URL")!;
+const SITE_URL = Deno.env.get("SITE_URL") || "https://badgesheet.vercel.app";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": SITE_URL,
