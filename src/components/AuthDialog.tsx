@@ -34,22 +34,34 @@ const AuthDialog = ({ mode, children, open, onOpenChange }: AuthDialogProps) => 
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
         if (error) throw error;
+        // Insert into users table
+        if (data.user) {
+          await supabase.from("users").insert([
+            { id: data.user.id, email: data.user.email }
+          ]);
+        }
         toast({
           title: "Success!",
           description: "Please check your email to verify your account.",
         });
         onOpenChange?.(false);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+        // Upsert into users table
+        if (data.user) {
+          await supabase.from("users").upsert([
+            { id: data.user.id, email: data.user.email }
+          ]);
+        }
         toast({
           title: "Success!",
           description: "You have been logged in successfully.",

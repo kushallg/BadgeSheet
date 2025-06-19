@@ -3,10 +3,7 @@ import AuthDialog from "./AuthDialog";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-
-interface NavigationProps {
-  plan?: 'one_time' | 'subscription' | null;
-}
+import { getPaymentStatus } from "@/utils/getPaymentStatus";
 
 const planDisplay = {
   one_time: {
@@ -23,10 +20,11 @@ const planDisplay = {
   }
 };
 
-const Navigation = ({ plan }: NavigationProps) => {
+const Navigation = () => {
   const [user, setUser] = useState<any>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
+  const [plan, setPlan] = useState<'one_time' | 'subscription' | null>(null);
 
   useEffect(() => {
     // Get current user on mount
@@ -41,6 +39,19 @@ const Navigation = ({ plan }: NavigationProps) => {
       listener?.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    // Fetch payment status on mount and when user changes
+    if (user) {
+      getPaymentStatus().then((status) => {
+        if (status.hasActiveSubscription) setPlan('subscription');
+        else if (status.hasValidOneTime) setPlan('one_time');
+        else setPlan(null);
+      });
+    } else {
+      setPlan(null);
+    }
+  }, [user]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

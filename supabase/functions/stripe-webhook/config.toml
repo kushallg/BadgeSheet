@@ -1,0 +1,3 @@
+[function]
+runtime = "deno" 
+verify_jwt = false
