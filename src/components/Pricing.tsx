@@ -1,4 +1,94 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import AuthDialog from "@/components/AuthDialog";
+import { getPaymentStatus } from "@/utils/getPaymentStatus";
+
 const Pricing = () => {
+  const [user, setUser] = useState<any>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [hasValidOneTime, setHasValidOneTime] = useState(false);
+  const [planLoading, setPlanLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState<"one_time" | "subscription" | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data?.user || null);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      if (session?.user) setLoginOpen(false);
+    });
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      setPlanLoading(true);
+      getPaymentStatus().then((status) => {
+        setHasActiveSubscription(!!status.hasActiveSubscription);
+        setHasValidOneTime(!!status.hasValidOneTime);
+        setPlanLoading(false);
+      });
+    } else {
+      setHasActiveSubscription(false);
+      setHasValidOneTime(false);
+      setPlanLoading(false);
+    }
+  }, [user]);
+
+  const handleSubscribe = async () => {
+    if (!user) {
+      setLoginOpen(true);
+    } else {
+      setCheckoutLoading("subscription");
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, plan: "subscription" }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          alert("Could not start checkout. Please try again.");
+        }
+      } catch (error: any) {
+        alert(error.message || "Failed to start checkout.");
+      } finally {
+        setCheckoutLoading(null);
+      }
+    }
+  };
+
+  const handleGetStarted = async () => {
+    if (!user) {
+      setLoginOpen(true);
+    } else {
+      setCheckoutLoading("one_time");
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, plan: "one_time" }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          alert("Could not start checkout. Please try again.");
+        }
+      } catch (error: any) {
+        alert(error.message || "Failed to start checkout.");
+      } finally {
+        setCheckoutLoading(null);
+      }
+    }
+  };
+
   return (
     <section className="bg-bgMedium py-16">
       <div className="container mx-auto px-4">
@@ -32,9 +122,19 @@ const Pricing = () => {
                     <span className="text-sm text-textDark/75">Instant download</span>
                   </li>
                 </ul>
-                <button className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors duration-200 font-semibold">
-                  Get Started
-                </button>
+                {/* Show active plan message if user has a plan */}
+                {!planLoading && (hasActiveSubscription || hasValidOneTime) && (
+                  <div className="text-primary font-semibold mt-4 text-center">You already have an active plan!</div>
+                )}
+                {/* Hide Get Started button if user has active subscription or valid one-time payment */}
+                {!planLoading && !hasActiveSubscription && !hasValidOneTime && (
+                  <button className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors duration-200 font-semibold"
+                    onClick={handleGetStarted}
+                    disabled={checkoutLoading === "one_time"}
+                  >
+                    {checkoutLoading === "one_time" ? "Loading..." : "Get Started"}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -64,9 +164,26 @@ const Pricing = () => {
                     <span className="text-sm text-textDark/75">Cancel anytime</span>
                   </li>
                 </ul>
-                <button className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors duration-200 font-semibold">
-                  Subscribe
-                </button>
+                {/* Show active plan message if user has a plan */}
+                {!planLoading && (hasActiveSubscription || hasValidOneTime) && (
+                  <div className="text-primary font-semibold mt-4 text-center">You already have an active plan!</div>
+                )}
+                {/* Hide Subscribe button if user has active subscription or valid one-time payment */}
+                {!planLoading && !hasActiveSubscription && !hasValidOneTime && (
+                  <>
+                    <button
+                      className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors duration-200 font-semibold"
+                      onClick={handleSubscribe}
+                      disabled={checkoutLoading === "subscription"}
+                    >
+                      {checkoutLoading === "subscription" ? "Loading..." : "Subscribe"}
+                    </button>
+                    <AuthDialog mode="login" open={loginOpen} onOpenChange={setLoginOpen}>
+                      {/* Hidden trigger, modal is controlled by state */}
+                      <span />
+                    </AuthDialog>
+                  </>
+                )}
               </div>
             </div>
           </div>

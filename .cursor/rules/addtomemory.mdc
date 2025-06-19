@@ -3,6 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
+whenever I say memory i am regarding to this mcp here
 If any changes are made in the app: 
 either structural 
 dependency stack changes 
