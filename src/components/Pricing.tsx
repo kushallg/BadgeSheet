@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AuthDialog from "@/components/AuthDialog";
-import { getPaymentStatus } from "@/utils/getPaymentStatus";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { useToast } from "@/components/ui/use-toast";
+import { apiService } from "@/services/api";
+import { getErrorMessage } from "@/utils/errorHandling";
+import { User } from "@supabase/supabase-js";
 
 const Pricing = () => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [hasValidOneTime, setHasValidOneTime] = useState(false);
-  const [planLoading, setPlanLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<"one_time" | "subscription" | null>(null);
+  const { toast } = useToast();
+  const { hasActiveSubscription, hasValidOneTime, isLoading: planLoading, error } = usePaymentStatus();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -24,68 +27,64 @@ const Pricing = () => {
     };
   }, []);
 
+  // Show error toast if payment status check fails
   useEffect(() => {
-    if (user) {
-      setPlanLoading(true);
-      getPaymentStatus().then((status) => {
-        setHasActiveSubscription(!!status.hasActiveSubscription);
-        setHasValidOneTime(!!status.hasValidOneTime);
-        setPlanLoading(false);
+    if (error) {
+      toast({
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
       });
-    } else {
-      setHasActiveSubscription(false);
-      setHasValidOneTime(false);
-      setPlanLoading(false);
     }
-  }, [user]);
+  }, [error, toast]);
 
   const handleSubscribe = async () => {
     if (!user) {
       setLoginOpen(true);
-    } else {
-      setCheckoutLoading("subscription");
-      try {
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, plan: "subscription" }),
-        });
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          alert("Could not start checkout. Please try again.");
-        }
-      } catch (error: any) {
-        alert(error.message || "Failed to start checkout.");
-      } finally {
-        setCheckoutLoading(null);
+      return;
+    }
+    
+    setCheckoutLoading("subscription");
+    try {
+      const { url } = await apiService.createCheckoutSession(user.email, "subscription");
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error("Could not start checkout");
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setCheckoutLoading(null);
     }
   };
 
   const handleGetStarted = async () => {
     if (!user) {
       setLoginOpen(true);
-    } else {
-      setCheckoutLoading("one_time");
-      try {
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, plan: "one_time" }),
-        });
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          alert("Could not start checkout. Please try again.");
-        }
-      } catch (error: any) {
-        alert(error.message || "Failed to start checkout.");
-      } finally {
-        setCheckoutLoading(null);
+      return;
+    }
+    
+    setCheckoutLoading("one_time");
+    try {
+      const { url } = await apiService.createCheckoutSession(user.email, "one_time");
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error("Could not start checkout");
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setCheckoutLoading(null);
     }
   };
 

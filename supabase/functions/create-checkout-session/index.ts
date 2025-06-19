@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "npm:stripe@13.0.0";
 
+const SITE_URL = Deno.env.get("SITE_URL")!;
+
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": SITE_URL,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -47,8 +49,8 @@ serve(async (req) => {
         },
       ],
       mode,
-      success_url: `${Deno.env.get("SITE_URL")}/generate?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get("SITE_URL")}/generate?canceled=true`,
+      success_url: `${SITE_URL}/generate?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${SITE_URL}/generate?canceled=true`,
       customer, // Always set customer
       metadata: { plan },
     });

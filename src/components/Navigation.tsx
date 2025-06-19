@@ -3,7 +3,10 @@ import AuthDialog from "./AuthDialog";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { getPaymentStatus } from "@/utils/getPaymentStatus";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { useToast } from "@/components/ui/use-toast";
+import { getErrorMessage } from "@/utils/errorHandling";
+import { User } from "@supabase/supabase-js";
 
 const planDisplay = {
   one_time: {
@@ -21,11 +24,15 @@ const planDisplay = {
 };
 
 const Navigation = () => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
-  const [plan, setPlan] = useState<'one_time' | 'subscription' | null>(null);
-  const [planLoading, setPlanLoading] = useState(true);
+  const { toast } = useToast();
+  const { hasActiveSubscription, hasValidOneTime, isLoading: planLoading, error } = usePaymentStatus();
+
+  // Determine plan type based on status
+  const planType = hasActiveSubscription ? 'subscription' : hasValidOneTime ? 'one_time' : 'none';
+  const planInfo = planDisplay[planType];
 
   useEffect(() => {
     // Get current user on mount
@@ -41,29 +48,21 @@ const Navigation = () => {
     };
   }, []);
 
+  // Show error toast if payment status check fails
   useEffect(() => {
-    // Fetch payment status on mount and when user changes
-    if (user) {
-      setPlanLoading(true);
-      getPaymentStatus().then((status) => {
-        if (status.hasActiveSubscription) setPlan('subscription');
-        else if (status.hasValidOneTime) setPlan('one_time');
-        else setPlan(null);
-        setPlanLoading(false);
+    if (error) {
+      toast({
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
       });
-    } else {
-      setPlan(null);
-      setPlanLoading(false);
     }
-  }, [user]);
+  }, [error, toast]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
   };
-
-  const planKey = plan === 'one_time' ? 'one_time' : plan === 'subscription' ? 'subscription' : 'none';
-  const planInfo = planDisplay[planKey];
 
   return (
     <TooltipProvider delayDuration={0}>
