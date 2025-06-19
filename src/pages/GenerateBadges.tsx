@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import NameUploader from "@/components/NameUploader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import Navigation from "@/components/Navigation";
 import { Palette } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import { getPaymentStatus } from "@/utils/getPaymentStatus";
 
 const colorOptions = [
   { name: 'Orange', value: '#F15025' },
@@ -17,13 +19,138 @@ const colorOptions = [
   { name: 'Indigo', value: '#4f46e5' }
 ];
 
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+const planOptions = [
+  { label: 'One-Time Purchase', value: 'one_time' },
+  { label: 'Monthly Subscription', value: 'subscription' },
+];
+
 const GenerateBadges = () => {
   const [names, setNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#F15025');
   const { toast } = useToast();
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [hasPaid, setHasPaid] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'one_time' | 'subscription'>('one_time');
+  const [authChecked, setAuthChecked] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [plan, setPlan] = useState<'one_time' | 'subscription' | null>(null);
+  const [planStatus, setPlanStatus] = useState<{ hasActiveSubscription: boolean, hasValidOneTime: boolean }>({ hasActiveSubscription: false, hasValidOneTime: false });
+  const [planLoading, setPlanLoading] = useState(true);
+
+  // Auth check on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data?.user || null);
+      setAuthChecked(true);
+      if (!data?.user) {
+        window.location.href = "/";
+      }
+    });
+    // Listen for auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      if (!session?.user) {
+        window.location.href = "/";
+      }
+    });
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Check for session_id in URL (after Stripe redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const session_id = params.get("session_id");
+    if (session_id) {
+      setSessionId(session_id);
+      setVerifying(true);
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setHasPaid(data.paid);
+          setPlan(data.plan || null);
+        })
+        .catch(() => {
+          setHasPaid(false);
+          setPlan(null);
+        })
+        .finally(() => setVerifying(false));
+    }
+  }, []);
+
+  useEffect(() => {
+    setPlanLoading(true);
+    getPaymentStatus().then((status) => {
+      setPlanStatus(status);
+      setPlanLoading(false);
+    });
+  }, []);
+
+  const handlePay = async () => {
+    if (planStatus.hasActiveSubscription || planStatus.hasValidOneTime) {
+      toast({
+        title: "Already Paid",
+        description: "You already have access. No need to pay again.",
+        variant: "default",
+      });
+      return;
+    }
+    const email = user?.email;
+    if (!email) {
+      toast({
+        title: "Error",
+        description: "No user email found. Please log in again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, plan: selectedPlan }),
+      });
+      const data = await res.json();
+      const stripe = await stripePromise;
+      if (stripe && data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: "Error",
+          description: "Could not start checkout. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start checkout.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGenerate = async () => {
+    if (!(planStatus.hasActiveSubscription || planStatus.hasValidOneTime)) {
+      toast({
+        title: "Payment Required",
+        description: "Please pay to download the PDF.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (names.length === 0) {
       toast({
         title: "Error",
@@ -32,18 +159,29 @@ const GenerateBadges = () => {
       });
       return;
     }
-
     setLoading(true);
     try {
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      if (!accessToken) {
+        toast({
+          title: "Error",
+          description: "User session expired. Please log in again.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-pdf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           names: names,
-          color: selectedColor
+          color: selectedColor,
+          session_id: sessionId,
         })
       });
 
@@ -94,46 +232,91 @@ const GenerateBadges = () => {
 
           <NameUploader onNamesChange={setNames} />
 
-          {/* Color Selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Palette className="w-4 h-4 inline mr-1" />
-              Badge Color
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {colorOptions.map((color) => (
-                <button
-                  key={color.value}
-                  onClick={() => setSelectedColor(color.value)}
-                  className={`w-full h-10 rounded-md border-2 transition-all ${
-                    selectedColor === color.value 
-                      ? 'border-gray-800 ring-2 ring-gray-300' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  style={{ backgroundColor: color.value }}
-                  title={color.name}
-                >
-                  {selectedColor === color.value && (
-                    <span className="text-white text-xs font-bold">✓</span>
-                  )}
-                </button>
-              ))}
+          {/* Show loading state while plan status is being fetched */}
+          {planLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <span className="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full border border-gray-200">Checking plan status...</span>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Selected: {colorOptions.find(c => c.value === selectedColor)?.name}
-            </p>
-          </div>
+          ) : (
+            <>
+              {/* Only show payment options if NOT on monthly plan or valid one-time payment */}
+              {!(planStatus.hasActiveSubscription || planStatus.hasValidOneTime) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Choose Plan
+                  </label>
+                  <div className="flex gap-4 mb-4">
+                    {planOptions.map((plan) => (
+                      <button
+                        key={plan.value}
+                        type="button"
+                        className={`px-4 py-2 rounded border-2 transition-all ${
+                          selectedPlan === plan.value
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                        }`}
+                        onClick={() => setSelectedPlan(plan.value as 'one_time' | 'subscription')}
+                      >
+                        {plan.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          <div className="flex justify-center">
-            <Button
-              size="lg"
-              className="bg-primary hover:bg-primary/90 text-white"
-              disabled={!names.length || loading}
-              onClick={handleGenerate}
-            >
-              {loading ? "Generating..." : "Generate PDF"}
-            </Button>
-          </div>
+              {/* Color Selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Palette className="w-4 h-4 inline mr-1" />
+                  Badge Color
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color.value}
+                      onClick={() => setSelectedColor(color.value)}
+                      className={`w-full h-10 rounded-md border-2 transition-all ${
+                        selectedColor === color.value 
+                          ? 'border-gray-800 ring-2 ring-gray-300' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: color.value }}
+                      title={color.name}
+                    >
+                      {selectedColor === color.value && (
+                        <span className="text-white text-xs font-bold">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selected: {colorOptions.find(c => c.value === selectedColor)?.name}
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                {(planStatus.hasActiveSubscription || planStatus.hasValidOneTime) ? (
+                  <Button
+                    size="lg"
+                    className="bg-primary hover:bg-primary/90 text-white"
+                    disabled={!names.length || loading}
+                    onClick={handleGenerate}
+                  >
+                    {loading ? "Generating..." : "Generate PDF"}
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="bg-primary hover:bg-primary/90 text-white"
+                    disabled={loading || verifying}
+                    onClick={handlePay}
+                  >
+                    {loading ? "Redirecting..." : "Pay to Download"}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>

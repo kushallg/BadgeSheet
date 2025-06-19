@@ -1,4 +1,93 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import AuthDialog from "@/components/AuthDialog";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { useToast } from "@/components/ui/use-toast";
+import { apiService } from "@/services/api";
+import { getErrorMessage } from "@/utils/errorHandling";
+import { User } from "@supabase/supabase-js";
+
 const Pricing = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState<"one_time" | "subscription" | null>(null);
+  const { toast } = useToast();
+  const { hasActiveSubscription, hasValidOneTime, isLoading: planLoading, error } = usePaymentStatus();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data?.user || null);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      if (session?.user) setLoginOpen(false);
+    });
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Show error toast if payment status check fails
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
+
+  const handleSubscribe = async () => {
+    if (!user) {
+      setLoginOpen(true);
+      return;
+    }
+    
+    setCheckoutLoading("subscription");
+    try {
+      const { url } = await apiService.createCheckoutSession(user.email, "subscription");
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error("Could not start checkout");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  const handleGetStarted = async () => {
+    if (!user) {
+      setLoginOpen(true);
+      return;
+    }
+    
+    setCheckoutLoading("one_time");
+    try {
+      const { url } = await apiService.createCheckoutSession(user.email, "one_time");
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error("Could not start checkout");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
   return (
     <section className="bg-bgMedium py-16">
       <div className="container mx-auto px-4">
@@ -32,9 +121,19 @@ const Pricing = () => {
                     <span className="text-sm text-textDark/75">Instant download</span>
                   </li>
                 </ul>
-                <button className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors duration-200 font-semibold">
-                  Get Started
-                </button>
+                {/* Show active plan message if user has a plan */}
+                {!planLoading && (hasActiveSubscription || hasValidOneTime) && (
+                  <div className="text-primary font-semibold mt-4 text-center">You already have an active plan!</div>
+                )}
+                {/* Hide Get Started button if user has active subscription or valid one-time payment */}
+                {!planLoading && !hasActiveSubscription && !hasValidOneTime && (
+                  <button className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors duration-200 font-semibold"
+                    onClick={handleGetStarted}
+                    disabled={checkoutLoading === "one_time"}
+                  >
+                    {checkoutLoading === "one_time" ? "Loading..." : "Get Started"}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -64,9 +163,26 @@ const Pricing = () => {
                     <span className="text-sm text-textDark/75">Cancel anytime</span>
                   </li>
                 </ul>
-                <button className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors duration-200 font-semibold">
-                  Subscribe
-                </button>
+                {/* Show active plan message if user has a plan */}
+                {!planLoading && (hasActiveSubscription || hasValidOneTime) && (
+                  <div className="text-primary font-semibold mt-4 text-center">You already have an active plan!</div>
+                )}
+                {/* Hide Subscribe button if user has active subscription or valid one-time payment */}
+                {!planLoading && !hasActiveSubscription && !hasValidOneTime && (
+                  <>
+                    <button
+                      className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors duration-200 font-semibold"
+                      onClick={handleSubscribe}
+                      disabled={checkoutLoading === "subscription"}
+                    >
+                      {checkoutLoading === "subscription" ? "Loading..." : "Subscribe"}
+                    </button>
+                    <AuthDialog mode="login" open={loginOpen} onOpenChange={setLoginOpen}>
+                      {/* Hidden trigger, modal is controlled by state */}
+                      <span />
+                    </AuthDialog>
+                  </>
+                )}
               </div>
             </div>
           </div>
