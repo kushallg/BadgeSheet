@@ -3,4 +3,8 @@ description:
 globs: 
 alwaysApply: true
 ---
-Add every message that you send and I send to memory so that its easier to pick up where we left off.
+If any changes are made in the app: 
+either structural 
+dependency stack changes 
+
+update or modify the memory to change this every time
