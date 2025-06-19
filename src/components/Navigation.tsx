@@ -8,7 +8,7 @@ import { getPaymentStatus } from "@/utils/getPaymentStatus";
 const planDisplay = {
   one_time: {
     label: "One-Time Plan",
-    tooltip: "You will need to pay again next time you log in."
+    tooltip: "You will need to pay again 3 hours after your payment"
   },
   subscription: {
     label: "Monthly Plan",

@@ -1,4 +1,3 @@
-
 const Footer = () => {
   return (
     <footer className="bg-textDark text-white py-12">
@@ -12,17 +11,8 @@ const Footer = () => {
 
           {/* Right - Links */}
           <div className="flex flex-wrap gap-6 md:justify-end">
-            <a href="#" className="text-white/80 hover:text-white hover:underline transition-colors">
-              About
-            </a>
-            <a href="#" className="text-white/80 hover:text-white hover:underline transition-colors">
-              Docs
-            </a>
-            <a href="#" className="text-white/80 hover:text-white hover:underline transition-colors">
+            <a href="mailto:cookieg4u@gmail.com" className="text-white/80 hover:text-white hover:underline transition-colors">
               Support
-            </a>
-            <a href="#" className="text-white/80 hover:text-white hover:underline transition-colors">
-              Terms
             </a>
           </div>
         </div>
