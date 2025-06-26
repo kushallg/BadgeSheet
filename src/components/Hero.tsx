@@ -42,7 +42,7 @@ const Hero: FC = () => {
                 Print-Ready Name Badge Inserts in 60s
               </h1>
               <p className="text-lg text-textDark/75 leading-7 max-w-lg">
-                Upload names, pick a template, cut along the dotted lines. No adhesives needed.
+                Upload names, pick a color template, cut along the lines. No adhesives needed.
               </p>
             </div>
             <button
