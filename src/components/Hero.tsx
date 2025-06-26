@@ -1,11 +1,11 @@
 import { Upload } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import AuthDialog from "@/components/AuthDialog";
 import { User } from "@supabase/supabase-js";
 
-const Hero = () => {
+const Hero: FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ const Hero = () => {
           <div className="space-y-8">
             <div className="space-y-6">
               <h1 className="text-4xl md:text-6xl font-bold text-textDark leading-tight">
-                Print-Ready Badge Inserts in 60s
+                Print-Ready Name Badge Inserts in 60s
               </h1>
               <p className="text-lg text-textDark/75 leading-7 max-w-lg">
                 Upload names, pick a template, cut along the dotted lines. No adhesives needed.
@@ -58,22 +58,36 @@ const Hero = () => {
             </AuthDialog>
           </div>
 
-          {/* Right Mockup */}
-          <div className="flex justify-center lg:justify-end">
-            <div className="bg-bgLight rounded-2xl p-8 shadow-xl max-w-sm">
-              <div className="bg-white rounded-lg p-6 space-y-4">
-                <div className="text-center text-sm text-textDark/60 mb-4">A4 PDF Preview</div>
-                <div className="grid grid-cols-2 gap-3">
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className="border-2 border-dashed border-primary/40 rounded-lg p-3 text-center">
-                      <div className="text-xs text-textDark/60 mb-1">Guest {i + 1}</div>
-                      <div className="text-sm font-semibold text-textDark">John Doe</div>
-                      <div className="text-xs text-textDark/50">Company Inc.</div>
+          {/* Right Mockup - UPDATED */}
+          <div className="flex justify-center lg:justify-start">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Map to create 4 generic badges */}
+              {[...Array(4)].map((_, index) => (
+                <div key={index} className="bg-white border-2 border-blue-100 rounded-lg shadow-md overflow-hidden w-48">
+                  {/* Orange Header */}
+                  <div className="bg-orange-500 text-white text-center py-2">
+                    <p className="text-xs font-bold tracking-wide">HELLO MY NAME IS</p>
+                  </div>
+                  {/* Main Content Area */}
+                  <div className="relative bg-white px-2 py-5">
+                    <div className="flex justify-center items-center h-full">
+                      {/* Name and Subtitle */}
+                      <div className="text-center">
+                        {/* Name is now "John Doe" */}
+                        <p className="text-3xl font-sans font-bold text-gray-800">John Doe</p>
+                        <p className="text-xs text-gray-500 mt-3">Event Badge</p>
+                      </div>
                     </div>
-                  ))}
+                    {/* Vertical Side Bars */}
+                    <div className="absolute left-2 top-0 bottom-0 flex items-center">
+                       <div className="w-1.5 h-12 bg-orange-500" />
+                    </div>
+                    <div className="absolute right-2 top-0 bottom-0 flex items-center">
+                       <div className="w-1.5 h-12 bg-orange-500" />
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-textDark/40 text-center mt-4">✂️ Cut along dotted lines</div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
