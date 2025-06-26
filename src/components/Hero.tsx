@@ -62,7 +62,7 @@ const Hero: FC = () => {
           <div className="flex justify-center lg:justify-start">
             <div className="grid grid-cols-2 gap-4">
               {/* Map to create 4 generic badges */}
-              {[...Array(4)].map((_, index) => (
+              {[...Array(6)].map((_, index) => (
                 <div key={index} className="bg-white border-2 border-blue-100 rounded-lg shadow-md overflow-hidden w-48">
                   {/* Orange Header */}
                   <div className="bg-orange-600 text-white text-center py-2">
