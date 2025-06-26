@@ -65,7 +65,7 @@ const Hero: FC = () => {
               {[...Array(4)].map((_, index) => (
                 <div key={index} className="bg-white border-2 border-blue-100 rounded-lg shadow-md overflow-hidden w-48">
                   {/* Orange Header */}
-                  <div className="bg-orange-500 text-white text-center py-2">
+                  <div className="bg-orange-600 text-white text-center py-2">
                     <p className="text-xs font-bold tracking-wide">HELLO MY NAME IS</p>
                   </div>
                   {/* Main Content Area */}
@@ -80,10 +80,10 @@ const Hero: FC = () => {
                     </div>
                     {/* Vertical Side Bars */}
                     <div className="absolute left-2 top-0 bottom-0 flex items-center">
-                       <div className="w-1.5 h-12 bg-orange-500" />
+                       <div className="w-1.5 h-12 bg-orange-600" />
                     </div>
                     <div className="absolute right-2 top-0 bottom-0 flex items-center">
-                       <div className="w-1.5 h-12 bg-orange-500" />
+                       <div className="w-1.5 h-12 bg-orange-600" />
                     </div>
                   </div>
                 </div>
